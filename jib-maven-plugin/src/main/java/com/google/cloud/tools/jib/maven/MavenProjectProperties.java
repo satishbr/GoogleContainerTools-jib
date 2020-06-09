@@ -253,9 +253,10 @@ public class MavenProjectProperties implements ProjectProperties {
       JavaContainerBuilder javaContainerBuilder, ContainerizingMode containerizingMode)
       throws IOException {
     try {
-      // Note these are not just "project dependencies" but all the artifact involved in a project,
-      // including the sub-module being containerized and the root <packaging>pom project.
-      Set<Artifact> artifactsFromAllProjects =
+      for (Artifact a : project.getArtifacts()) {
+        log(LogEvent.warn(a.toString()));
+      }
+      Set<Artifact> projectDependencies =
           session
               .getProjects()
               .stream()
@@ -263,13 +264,6 @@ public class MavenProjectProperties implements ProjectProperties {
               .filter(artifact -> !artifact.equals(project.getArtifact()))
               .filter(artifact -> artifact.getFile() != null)
               .collect(Collectors.toSet());
-      log(LogEvent.warn("size: " + artifactsFromAllProjects.size()));
-      for (Artifact a : artifactsFromAllProjects) {
-        log(LogEvent.warn(a.toString()));
-        log(LogEvent.warn(a.getId()));
-        log(LogEvent.warn(a.getGroupId() + ":" + a.getArtifactId() + ":" + a.getVersion()));
-        log(LogEvent.warn("file: " + a.getFile()));
-      }
 
       if (isWarProject()) {
         Path war = getWarArtifact();
@@ -278,7 +272,7 @@ public class MavenProjectProperties implements ProjectProperties {
         return JavaContainerBuilderHelper.fromExplodedWar(
             javaContainerBuilder,
             explodedWarPath,
-            artifactsFromAllProjects
+            projectDependencies
                 .stream()
                 .map(Artifact::getFile)
                 .map(File::getName)
@@ -307,7 +301,7 @@ public class MavenProjectProperties implements ProjectProperties {
 
       // Classify and add dependencies
       Map<LayerType, List<Path>> classifiedDependencies =
-          classifyDependencies(project.getArtifacts(), artifactsFromAllProjects);
+          classifyDependencies(project.getArtifacts(), projectDependencies);
 
       javaContainerBuilder.addDependencies(
           Preconditions.checkNotNull(classifiedDependencies.get(LayerType.DEPENDENCIES)));
